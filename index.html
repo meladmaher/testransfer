@@ -250,12 +250,12 @@
             const coreHeight = parseFloat(document.getElementById('coreHeight').value);
             const primaryVoltage = parseFloat(document.getElementById('primaryVoltage').value);
 
-            if (isNaN(coreWidth) {
+            if (isNaN(coreWidth) || coreWidth <= 0) {
                 alert('❗ الرجاء إدخال عرض قلب صحيح');
                 return;
             }
 
-            if (isNaN(coreHeight)) {
+            if (isNaN(coreHeight) || coreHeight <= 0) {
                 alert('❗ الرجاء إدخال ارتفاع قلب صحيح');
                 return;
             }
@@ -432,4 +432,4 @@
         document.head.appendChild(style);
     </script>
 </body>
-            </html>
+</html>

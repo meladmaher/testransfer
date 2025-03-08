@@ -7,7 +7,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
-        /* نفس الستايل السابق بدون تعديلات */
         :root {
             --primary: #2c3e50;
             --secondary: #27ae60;
@@ -57,6 +56,7 @@
             border: 2px solid #ddd;
             border-radius: 8px;
             width: 100%;
+            font-family: inherit;
         }
 
         button {
@@ -68,6 +68,7 @@
             cursor: pointer;
             transition: all 0.3s;
             margin: 10px 0;
+            font-family: inherit;
         }
 
         button:hover {
@@ -154,17 +155,17 @@
         
         <div class="input-group">
             <label>عرض القلب الحديدي (سم):</label>
-            <input type="number" id="coreWidth" step="0.1" value="3.8">
+            <input type="number" id="coreWidth" step="0.1" value="3.8" required>
         </div>
 
         <div class="input-group">
             <label>ارتفاع القلب (سم):</label>
-            <input type="number" id="coreHeight" step="0.1" value="1.3">
+            <input type="number" id="coreHeight" step="0.1" value="1.3" required>
         </div>
 
         <div class="input-group">
             <label>الجهد الابتدائي (V):</label>
-            <input type="number" id="primaryVoltage" value="220">
+            <input type="number" id="primaryVoltage" value="220" required>
         </div>
 
         <div id="secondariesContainer">
@@ -172,7 +173,7 @@
                 <button class="delete-btn" onclick="this.parentElement.remove()">×</button>
                 <div class="input-group">
                     <label>الجهد الثانوي (V):</label>
-                    <input type="number" class="secondaryVoltage" value="24">
+                    <input type="number" class="secondaryVoltage" value="24" required>
                 </div>
                 <div class="input-group">
                     <label>هل يوجد سنتر تاب؟</label>
@@ -194,59 +195,251 @@
     </div>
 
     <script>
-        // الدوال السابقة بدون تعديل
-        const wireTable = [ /* ... نفس الجدول السابق ... */ ];
+        const wireTable = [
+            { diameter: 0.2, maxCurrent: 0.3 },
+            { diameter: 0.3, maxCurrent: 0.6 },
+            { diameter: 0.4, maxCurrent: 0.9 },
+            { diameter: 0.5, maxCurrent: 1.2 },
+            { diameter: 0.6, maxCurrent: 1.8 },
+            { diameter: 0.8, maxCurrent: 2.5 },
+            { diameter: 1.0, maxCurrent: 3.5 },
+            { diameter: 1.2, maxCurrent: 5.0 }
+        ];
 
-        // التعديلات الجديدة في دالة generatePDF()
-        async function generatePDF() {
-            const resultDiv = document.getElementById('result');
-            if (!resultDiv.children.length) {
-                alert('❗ الرجاء إجراء الحساب أولاً');
+        function addSecondary() {
+            const newSecondary = document.createElement('div');
+            newSecondary.className = 'coil-box';
+            newSecondary.innerHTML = `
+                <button class="delete-btn" onclick="this.parentElement.remove()">×</button>
+                <div class="input-group">
+                    <label>الجهد الثانوي (V):</label>
+                    <input type="number" class="secondaryVoltage" value="24" required>
+                </div>
+                <div class="input-group">
+                    <label>هل يوجد سنتر تاب؟</label>
+                    <select class="ct-select" onchange="toggleCT(this)">
+                        <option value="no">لا</option>
+                        <option value="yes">نعم</option>
+                    </select>
+                </div>
+            `;
+            document.getElementById('secondariesContainer').appendChild(newSecondary);
+        }
+
+        function toggleCT(select) {
+            const container = select.closest('.coil-box');
+            const voltageInput = container.querySelector('.secondaryVoltage');
+            if (!voltageInput) return;
+
+            if (select.value === 'yes' && !voltageInput.dataset.original) {
+                voltageInput.dataset.original = voltageInput.value;
+                voltageInput.value = parseFloat(voltageInput.value) * 2;
+            } else if (select.value === 'no' && voltageInput.dataset.original) {
+                voltageInput.value = voltageInput.dataset.original;
+                delete voltageInput.dataset.original;
+            }
+        }
+
+        function findWireThickness(current) {
+            for(let wire of wireTable) {
+                if(wire.maxCurrent >= current) return wire.diameter;
+            }
+            return 'غير متوفر';
+        }
+
+        function calculate() {
+            const coreWidthInput = document.getElementById('coreWidth');
+            const coreHeightInput = document.getElementById('coreHeight');
+            const primaryVoltageInput = document.getElementById('primaryVoltage');
+            
+            const coreWidth = parseFloat(coreWidthInput.value);
+            const coreHeight = parseFloat(coreHeightInput.value);
+            const primaryVoltage = parseFloat(primaryVoltageInput.value);
+
+            // التحقق من المدخلات
+            if (isNaN(coreWidth) {
+                alert('❗ الرجاء إدخال عرض قلب صحيح');
+                coreWidthInput.focus();
                 return;
             }
 
-            // حساب مساحة القلب للتسمية
-            const coreWidth = parseFloat(document.getElementById('coreWidth').value) || 0;
-            const coreHeight = parseFloat(document.getElementById('coreHeight').value) || 0;
-            const coreArea = (coreWidth * coreHeight).toFixed(2);
+            if (isNaN(coreHeight)) {
+                alert('❗ الرجاء إدخال ارتفاع قلب صحيح');
+                coreHeightInput.focus();
+                return;
+            }
 
-            const pdf = new jspdf.jsPDF({
-                orientation: 'p',
-                unit: 'mm',
-                format: 'a4',
-                rtl: true
+            const coreArea = coreWidth * coreHeight;
+            if (coreArea <= 0) {
+                alert('❗ مساحة القلب غير صالحة');
+                return;
+            }
+
+            const secondaries = [];
+            const secondaryContainers = document.getElementsByClassName('coil-box');
+            
+            for (let container of secondaryContainers) {
+                const voltageInput = container.querySelector('.secondaryVoltage');
+                const ctSelect = container.querySelector('.ct-select');
+                
+                if (!voltageInput || !ctSelect) continue;
+                
+                const voltage = parseFloat(voltageInput.value) || 0;
+                if (voltage <= 0) {
+                    alert('❗ الرجاء إدخال جهد ثانوي صحيح');
+                    voltageInput.focus();
+                    return;
+                }
+
+                secondaries.push({
+                    voltage: voltage,
+                    ct: ctSelect.value === 'yes'
+                });
+            }
+
+            const turnsPerVolt = 45 / coreArea;
+            const power = Math.round((coreArea / 1.1) ** 2);
+
+            let resultHTML = `
+                <div class="core-specs">
+                    <h3>𓃑 مواصفات القلب:</h3>
+                    <p>𓇼 المساحة: ${coreArea.toFixed(2)} سم²</p>
+                    <p>𓋼 القدرة: ${power} واط</p>
+                    <p>𓍯 اللفات/فولت: ${turnsPerVolt.toFixed(1)}</p>
+                </div>
+
+                <div class="coil-box">
+                    <h3>𓋼 الملف الابتدائي (${primaryVoltage}V):</h3>
+                    <p>𓇻 عدد اللفات: ${Math.round(primaryVoltage * turnsPerVolt)}</p>
+                    <p>𓃠 التيار: ${(power / primaryVoltage).toFixed(2)}A</p>
+                    <div class="wire-details">
+                        𓏲 سمك السلك: ${findWireThickness(power / primaryVoltage)} مم
+                    </div>
+                </div>
+            `;
+
+            secondaries.forEach((sec, index) => {
+                const totalTurns = Math.round(sec.voltage * turnsPerVolt);
+                const midTurns = sec.ct ? Math.round(totalTurns / 2) : null;
+                const current = power / sec.voltage;
+                
+                resultHTML += `
+                    <div class="coil-box">
+                        <h3>𓋼 الملف الثانوي ${index + 1} (${sec.voltage}V):</h3>
+                        <p>𓇻 عدد اللفات: ${totalTurns}</p>
+                        <p>𓃠 التيار: ${current.toFixed(2)}A</p>
+                        <div class="wire-details">
+                            𓏲 سمك السلك: ${findWireThickness(current)} مم
+                        </div>
+                        ${sec.ct ? `
+                            <div style="color:var(--accent); margin-top:10px;">
+                                𓍝 تفاصيل السنتر تاب:
+                                <div>• من 0V إلى ${sec.voltage/2}V: ${midTurns} لفة</div>
+                                <div>• من 0V إلى ${sec.voltage}V: ${totalTurns} لفة</div>
+                            </div>
+                        ` : ''}
+                        <div class="edit-section">
+                            <div class="edit-input-group">
+                                <input type="number" class="custom-current" placeholder="أدخل التيار المطلوب (A)">
+                                <button class="edit-btn" onclick="handleCustomCurrent(event)">حساب</button>
+                            </div>
+                            <div class="custom-result"></div>
+                        </div>
+                    </div>
+                `;
             });
 
-            // إضافة عنوان رئيسي
-            pdf.setFontSize(22);
-            pdf.text(`مواصفات محول - مساحة القلب ${coreArea}سم²`, 105, 20, { align: 'center' });
-
-            // التقاط المحتوى
-            const canvas = await html2canvas(resultDiv);
-            const imgData = canvas.toDataURL('image/png');
-            
-            // إضافة الصورة للPDF
-            const pageWidth = pdf.internal.pageSize.getWidth();
-            const imgWidth = pageWidth - 20;
-            const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-            pdf.addImage(imgData, 'PNG', 10, 30, imgWidth, imgHeight);
-            
-            // حفظ الملف باسم مخصص
-            pdf.save(`محول-مساحة-القلب-${coreArea}سم².pdf`);
+            document.getElementById('result').innerHTML = resultHTML;
         }
 
-        // باقي الدوال بدون تعديل
-        function addSecondary() { /* ... */ }
-        function toggleCT(select) { /* ... */ }
-        function findWireThickness(current) { /* ... */ }
-        function findCustomWire(current) { /* ... */ }
-        function calculate() { /* ... */ }
-        function handleCustomCurrent(event) { /* ... */ }
+        function handleCustomCurrent(event) {
+            const button = event.target;
+            const coilBox = button.closest('.coil-box');
+            const input = coilBox.querySelector('.custom-current');
+            const resultDiv = coilBox.querySelector('.custom-result');
+            
+            if(input.value) {
+                const current = parseFloat(input.value);
+                if (current <= 0) {
+                    resultDiv.innerHTML = '❗ الرجاء إدخال قيمة صحيحة';
+                    return;
+                }
+                resultDiv.innerHTML = `سمك السلك المطلوب: ${findWireThickness(current)} مم`;
+            }
+        }
+
+        async function generatePDF() {
+            try {
+                const resultDiv = document.getElementById('result');
+                if (!resultDiv.children.length) {
+                    throw new Error('الرجاء إجراء الحساب أولاً');
+                }
+
+                const coreWidth = parseFloat(document.getElementById('coreWidth').value);
+                const coreHeight = parseFloat(document.getElementById('coreHeight').value);
+                
+                if (isNaN(coreWidth) || isNaN(coreHeight)) {
+                    throw new Error('قيم أبعاد القلب غير صالحة');
+                }
+
+                const coreArea = (coreWidth * coreHeight).toFixed(2);
+                const fileName = `محول_مساحة_القلب_${coreArea}سم².pdf`;
+
+                const pdf = new jspdf.jsPDF({
+                    orientation: 'portrait',
+                    unit: 'mm',
+                    format: 'a4',
+                    rtl: true
+                });
+
+                // Header
+                pdf.setFontSize(18);
+                pdf.setFont('helvetica', 'bold');
+                pdf.text('تقرير مواصفات المحول الكهربائي', 105, 15, { align: 'center' });
+                pdf.setFontSize(12);
+                pdf.text(`مساحة القلب الحديدي: ${coreArea} سم²`, 105, 25, { align: 'center' });
+
+                // Content
+                const canvas = await html2canvas(resultDiv, {
+                    scale: 2,
+                    logging: false,
+                    useCORS: true
+                });
+
+                const imgWidth = 190;
+                const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                
+                pdf.addImage(canvas, 'PNG', 10, 35, imgWidth, imgHeight);
+                pdf.save(fileName);
+
+            } catch (error) {
+                alert(`❌ خطأ: ${error.message}`);
+                console.error(error);
+            }
+        }
 
         // تحسينات الطباعة
         const style = document.createElement('style');
-        style.innerHTML = ` /* ... نفس الكود السابق ... */ `;
+        style.innerHTML = `
+            @media print {
+                body * {
+                    visibility: hidden;
+                }
+                #result, #result * {
+                    visibility: visible;
+                }
+                #result {
+                    position: absolute;
+                    left: 0;
+                    top: 0;
+                    width: 100%;
+                    padding: 20px;
+                }
+                button {
+                    display: none;
+                }
+            }
+        `;
         document.head.appendChild(style);
     </script>
 </body>
